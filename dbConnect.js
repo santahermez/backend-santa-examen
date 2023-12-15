@@ -7,9 +7,9 @@ async function dbConnect() {
     .then(() => {
       console.log("Successfully connected to MongoDB Atlas!");
     })
-    .catch((error) => {
-      console.log("Unable to connect to MongoDB Atlas!");
-      console.error(error);
+    .catch((err) => {
+      console.error("Failed to connect to MongoDB. Retrying in 5 seconds...");
+      setTimeout(connectWithRetry, 5000);
     });
 }
 

@@ -18,8 +18,7 @@ app.get("/", (req, res) => {
   res.send("Hello from my server!");
 });
 
-// Use "/api" as the base route for userRoutes
-app.use("/", userRoutes);
+app.use("/user", userRoutes);
 // app.use("/", imageRoutes);
 
 const PORT = process.env.PORT || 8080;

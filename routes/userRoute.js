@@ -5,6 +5,11 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
+const multer = require("multer");
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+const Image = require("../models/imageModel");
+
 // Register
 router.post("/register", async (req, res) => {
   try {
@@ -89,6 +94,49 @@ router.get("/users", async (req, res) => {
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Upload image
+router.post("/upload", upload.single("image"), async (req, res) => {
+  try {
+    const newImage = new Image({
+      data: req.file.buffer,
+      contentType: req.file.mimetype,
+    });
+    await newImage.save();
+    res.status(200).json({
+      success: true,
+      message: "Bild laddad upp!",
+      userId: newImage._id,
+      path: `/uploads/${newImage._id}.jpg`,
+    });
+  } catch (error) {
+    console.error("Error uploading image:", error);
+
+    // Logga stack trace om det finns ett error-objekt
+    if (error instanceof Error) {
+      console.error(error.stack);
+    }
+
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/getProfileImage/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).populate("image");
+
+    if (!user || !user.image) {
+      return res.status(404).json({ error: "No profile image found" });
+    }
+
+    const image = user.image;
+    res.set("Content-Type", image.contentType);
+    res.send(image.data);
+  } catch (error) {
+    console.error("Error fetching profile image:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
