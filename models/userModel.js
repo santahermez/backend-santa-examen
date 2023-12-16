@@ -30,4 +30,9 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+UserSchema.pre("findOne", function (next) {
+  this.populate("image");
+  next();
+});
+
 module.exports = mongoose.model("Users", UserSchema);

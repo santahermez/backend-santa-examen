@@ -5,10 +5,10 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
+const Image = require("../models/imageModel");
 const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-const Image = require("../models/imageModel");
 
 // Register
 router.post("/register", async (req, res) => {
@@ -47,20 +47,20 @@ router.post("/register", async (req, res) => {
 });
 
 // Login
-router.post("/login", async (request, response) => {
+router.post("/login", async (req, res) => {
   try {
-    const { email, password } = request.body;
+    const { email, password } = req.body;
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      return response.status(404).json({ message: "Email not found" });
+      return res.status(404).json({ message: "Email not found" });
     }
 
     const passwordCheck = await bcrypt.compare(password, user.password);
 
     if (!passwordCheck) {
-      return response.status(400).json({ message: "Passwords do not match" });
+      return res.status(400).json({ message: "Passwords do not match" });
     }
 
     const token = jwt.sign(
@@ -68,11 +68,11 @@ router.post("/login", async (request, response) => {
         userId: user._id,
         userEmail: user.email,
       },
-      process.env.JWT_SECRET, // Replace with your actual secret
+      process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
-    response.status(200).json({
+    res.status(200).json({
       message: "Login Successful",
       _id: user._id,
       email: user.email,
@@ -82,61 +82,69 @@ router.post("/login", async (request, response) => {
     });
   } catch (error) {
     console.error("Error during login:", error);
-    response.status(500).json({ message: "Internal server error" });
-  }
-});
-
-// Show all users
-router.get("/users", async (req, res) => {
-  try {
-    const users = await User.find();
-    res.json({ users: users.length, data: users });
-  } catch (error) {
-    console.error("Error fetching users:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Upload image
+// Ladda upp en profilbild
 router.post("/upload", upload.single("image"), async (req, res) => {
   try {
-    const newImage = new Image({
-      data: req.file.buffer,
-      contentType: req.file.mimetype,
-    });
-    await newImage.save();
-    res.status(200).json({
-      success: true,
-      message: "Bild laddad upp!",
-      userId: newImage._id,
-      path: `/uploads/${newImage._id}.jpg`,
-    });
-  } catch (error) {
-    console.error("Error uploading image:", error);
+    const { originalname, buffer, mimetype } = req.file;
+    const userID = req.body.userID;
 
-    // Logga stack trace om det finns ett error-objekt
-    if (error instanceof Error) {
-      console.error(error.stack);
+    // Spara bilden i databasen
+    const newImage = new Image({
+      name: originalname,
+      data: buffer,
+      contentType: mimetype,
+    });
+
+    await newImage.save();
+
+    // Koppla bilden till användaren
+    const user = await User.findOne({ _id: userID });
+    if (!user) {
+      return res.status(404).send("User not found");
     }
 
-    res.status(500).json({ error: "Internal server error" });
+    user.image = newImage._id;
+    await user.save();
+
+    res.send("Image uploaded successfully!");
+  } catch (error) {
+    console.error("Error during image upload:", error);
+    res.status(500).send("Internal Server Error");
   }
 });
 
-router.get("/getProfileImage/:id", async (req, res) => {
+
+router.get('/user/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).populate("image");
-
-    if (!user || !user.image) {
-      return res.status(404).json({ error: "No profile image found" });
+    const userId = req.params.userId;
+    const user = await User.findOne({ _id: userId }).populate('image');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
-    const image = user.image;
-    res.set("Content-Type", image.contentType);
+// Endpoint för att hämta bildinformation
+router.get('/image/:imageId', async (req, res) => {
+  try {
+    const imageId = req.params.imageId;
+    const image = await Image.findOne({ _id: imageId });
+    if (!image) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+    res.set('Content-Type', image.contentType);
     res.send(image.data);
   } catch (error) {
-    console.error("Error fetching profile image:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    console.error('Error fetching image data:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
