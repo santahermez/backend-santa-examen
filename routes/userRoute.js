@@ -9,7 +9,8 @@ const Image = require("../models/imageModel");
 const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-
+const userController = require("../userController");
+const JWT_SECRET = "veryverySecret" || process.env.JWT_SECRET;
 // Register
 router.post("/register", async (req, res) => {
   try {
@@ -63,12 +64,15 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Passwords do not match" });
     }
 
+    user.lastLogin = new Date().toUTCString().slice(5, 22);
+    await user.save();
+
     const token = jwt.sign(
       {
         userId: user._id,
         userEmail: user.email,
       },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: "24h" }
     );
 
@@ -117,35 +121,36 @@ router.post("/upload", upload.single("image"), async (req, res) => {
   }
 });
 
-
-router.get('/user/:userId', async (req, res) => {
+router.get("/user/:userId", async (req, res) => {
   try {
     const userId = req.params.userId;
-    const user = await User.findOne({ _id: userId }).populate('image');
+    const user = await User.findOne({ _id: userId }).populate("image");
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
     res.json(user);
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error fetching user data:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 // Endpoint för att hämta bildinformation
-router.get('/image/:imageId', async (req, res) => {
+router.get("/image/:imageId", async (req, res) => {
   try {
     const imageId = req.params.imageId;
     const image = await Image.findOne({ _id: imageId });
     if (!image) {
-      return res.status(404).json({ message: 'Image not found' });
+      return res.status(404).json({ message: "Image not found" });
     }
-    res.set('Content-Type', image.contentType);
+    res.set("Content-Type", image.contentType);
     res.send(image.data);
   } catch (error) {
-    console.error('Error fetching image data:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error fetching image data:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+router.get("/users", userController.getAllUsers);
 
 module.exports = router;

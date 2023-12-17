@@ -23,6 +23,10 @@ const UserSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Image",
     },
+    lastLogin: {
+      type: String,
+      default: null,
+    },
     token: {
       type: String,
     },

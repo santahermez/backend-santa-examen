@@ -1,9 +1,12 @@
 const mongoose = require("mongoose");
 require("dotenv").config();
 
+const DB_URL =
+  "mongodb+srv://test1:testing123@santaslogin.2fyjfpl.mongodb.net/?retryWrites=true&w=majority" ||
+  process.env.DATABASE_URL;
 async function dbConnect() {
   mongoose
-    .connect(process.env.DATABASE_URL)
+    .connect(DB_URL)
     .then(() => {
       console.log("Successfully connected to MongoDB Atlas!");
     })
